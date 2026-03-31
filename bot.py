@@ -1,72 +1,71 @@
 import discord
 from discord.ext import commands
-import os
 import asyncio
-import threading
 import requests
-from flask import Flask
+import os
 
 TOKEN = os.getenv("TOKEN")
+CHANNEL_ID = 1488540243266375877
 
 intents = discord.Intents.default()
 intents.message_content = True
-
 bot = commands.Bot(command_prefix="!", intents=intents)
 
 sent_items = set()
 
-async def auto_vinted():
+async def vinted_loop():
     await bot.wait_until_ready()
-    channel = bot.get_channel(1488540243266375877)
+    channel = bot.get_channel(CHANNEL_ID)
 
-    while True:
+    print("Boucle démarrée")
+
+    while not bot.is_closed():
         try:
+            print("Recherche Vinted...")
+
             url = "https://www.vinted.fr/api/v2/catalog/items"
             params = {
-                "search_text": "iPhone 11 12 13 14 15",
+                "search_text": "iphone",
                 "price_from": 50,
                 "price_to": 250,
                 "order": "newest_first",
                 "per_page": 5
             }
 
-            response = requests.get(url, params=params)
-            data = response.json()
-            items = data.get("items", [])
+            headers = {
+                "User-Agent": "Mozilla/5.0"
+            }
 
-            for item in items:
-                item_id = item["id"]
+            response = requests.get(url, params=params, headers=headers)
+            print("HTTP", response.status_code)
 
-                if item_id not in sent_items:
-                    sent_items.add(item_id)
+            if response.status_code == 200:
+                data = response.json()
+                items = data.get("items", [])
 
-                    title = item["title"]
-                    price = item["price"]
-                    url_item = item["url"]
+                for item in items:
+                    item_id = item["id"]
 
-                    message = f"📱 **{title}**\n💰 {price}€\n🔗 {url_item}"
-                    await channel.send(message)
+                    if item_id not in sent_items:
+                        title = item["title"]
+                        price = item["price"]
+                        url_item = item["url"]
+
+                        message = f"📱 **{title}**\n💰 {price}€\n🔗 {url_item}"
+                        await channel.send(message)
+
+                        sent_items.add(item_id)
+
+            await asyncio.sleep(20)
 
         except Exception as e:
-            print("Erreur Vinted:", e)
-
-        await asyncio.sleep(20)
+            print("ERREUR:", e)
+            await asyncio.sleep(20)
 
 @bot.event
 async def on_ready():
     print(f"Bot connecté en tant que {bot.user}")
-    bot.loop.create_task(auto_vinted())
-
-app = Flask(__name__)
-
-@app.route("/")
-def home():
-    return "Bot is running"
-
-def run():
-    port = int(os.environ.get("PORT", 10000))
-    app.run(host="0.0.0.0", port=port)
-
-threading.Thread(target=run).start()
+    bot.loop.create_task(vinted_loop())
+    print("Task lancée")
 
 bot.run(TOKEN)
