@@ -3,9 +3,25 @@ from discord.ext import commands
 import asyncio
 import requests
 import os
+from flask import Flask
+from threading import Thread
 
 TOKEN = os.getenv("TOKEN")
 CHANNEL_ID = 1488540243266375877
+
+app = Flask(__name__)
+
+@app.route("/")
+def home():
+    return "Bot is running"
+
+def run():
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host="0.0.0.0", port=port)
+
+def keep_alive():
+    server = Thread(target=run)
+    server.start()
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -16,7 +32,6 @@ sent_items = set()
 async def vinted_loop():
     await bot.wait_until_ready()
     channel = bot.get_channel(CHANNEL_ID)
-
     print("Boucle démarrée")
 
     while not bot.is_closed():
@@ -32,9 +47,7 @@ async def vinted_loop():
                 "per_page": 5
             }
 
-            headers = {
-                "User-Agent": "Mozilla/5.0"
-            }
+            headers = {"User-Agent": "Mozilla/5.0"}
 
             response = requests.get(url, params=params, headers=headers)
             print("HTTP", response.status_code)
@@ -66,6 +79,6 @@ async def vinted_loop():
 async def on_ready():
     print(f"Bot connecté en tant que {bot.user}")
     bot.loop.create_task(vinted_loop())
-    print("Task lancée")
 
+keep_alive()
 bot.run(TOKEN)
