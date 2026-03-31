@@ -1,7 +1,10 @@
 import discord
 from discord.ext import commands
-
 import os
+import asyncio
+import threading
+from flask import Flask
+
 TOKEN = os.getenv("TOKEN")
 
 intents = discord.Intents.default()
@@ -9,16 +12,22 @@ intents.message_content = True
 
 bot = commands.Bot(command_prefix="!", intents=intents)
 
+async def auto_message():
+    await bot.wait_until_ready()
+    channel = discord.utils.get(bot.get_all_channels(), name="annonce-Vinted")
+
+    while not bot.is_closed():
+        print("La boucle tourne")
+        if channel:
+            await channel.send("🚀 Test automatique actif")
+        else:
+            print("Salon non trouvé")
+        await asyncio.sleep(60)
+
 @bot.event
 async def on_ready():
     print(f"Bot connecté en tant que {bot.user}")
-
-@bot.command()
-async def ping(ctx):
-    await ctx.send("Pong 🏓")
-
-import threading
-from flask import Flask
+    bot.loop.create_task(auto_message())
 
 app = Flask(__name__)
 
@@ -31,79 +40,5 @@ def run():
     app.run(host="0.0.0.0", port=port)
 
 threading.Thread(target=run).start()
-
-bot.run(TOKEN)
-
-import asyncio
-import requests
-
-sent_items = set()
-
-async def check_vinted():
-    await bot.wait_until_ready()
-    channel = discord.utils.get(bot.get_all_channels(), name="annonce-vinted")  # ⚠️ change si besoin
-
-    while not bot.is_closed():
-        try:
-            url = "https://www.vinted.fr/api/v2/catalog/items"
-            params = {
-                "search_text": "iPhone 11 12 13 14 15 cassé",
-                "price_from": 50,
-                "price_to": 250,
-                "order": "newest_first",
-                "per_page": 5
-            }
-
-            response = requests.get(url, params=params)
-            data = response.json()
-            items = data.get("items", [])
-
-            for item in items:
-                item_id = item["id"]
-
-                if item_id not in sent_items:
-                    sent_items.add(item_id)
-
-                    title = item["title"]
-                    price = item["price"]
-                    url_item = item["url"]
-
-                    message = f"📱 **{title}**\n💰 {price}€\n🔗 {url_item}"
-                    await channel.send(message)
-
-        except Exception as e:
-            print("Erreur:", e)
-
-        await asyncio.sleep(60)  # vérifie toutes les 60 secondes
-
-bot.loop.create_task(check_vinted())
-import discord
-from discord.ext import commands
-import os
-import asyncio
-
-TOKEN = os.getenv("TOKEN")
-
-intents = discord.Intents.default()
-intents.message_content = True
-
-bot = commands.Bot(command_prefix="!", intents=intents)
-
-@bot.event
-async def on_ready():
-    print(f"Bot connecté en tant que {bot.user}")
-    bot.loop.create_task(auto_message())
-
-async def auto_message():
-    await bot.wait_until_ready()
-    channel = discord.utils.get(bot.get_all_channels(), name="annonce-Vinted")
-
-    while not bot.is_closed():
-        print("La boucle tourne")
-        if channel:
-            await channel.send("Recherche automatique iPhone 11 à 15 entre 50€ et 250€ 🔥")
-        else:
-            print("Salon non trouvé")
-        await asyncio.sleep(60)
 
 bot.run(TOKEN)
