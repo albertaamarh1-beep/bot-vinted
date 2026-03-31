@@ -18,20 +18,15 @@ async def ping(ctx):
     await ctx.send("Pong 🏓")
 
 bot.run(TOKEN)
-import threading
-from flask import Flask
+const express = require('express')
+const app = express()
+const port = process.env.PORT || 4000
 
-app = Flask(__name__)
+app.get('/', (req, res) => {
+  res.send('Hello World!')
+})
 
-@app.route("/")
-def home():
-    return "Bot is running"
-
-def run():
-    port = int(os.environ.get("PORT", 10000))
-    app.run(host="0.0.0.0", port=port)
-
-threading.Thread(target=run).start()
-
-bot.run(TOKEN)
+app.listen(port, () => {
+  console.log(`Example app listening on port ${port}`)
+})
 
