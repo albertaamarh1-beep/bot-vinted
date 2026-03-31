@@ -3,6 +3,7 @@ from discord.ext import commands
 import os
 import asyncio
 import threading
+import requests
 from flask import Flask
 
 TOKEN = os.getenv("TOKEN")
@@ -12,22 +13,49 @@ intents.message_content = True
 
 bot = commands.Bot(command_prefix="!", intents=intents)
 
-async def auto_message():
+sent_items = set()
+
+async def auto_vinted():
     await bot.wait_until_ready()
     channel = bot.get_channel(1488540243266375877)
 
     while True:
-        print("La boucle tourne")
-        if channel:
-            await channel.send("🚀 Test automatique actif")
-        else:
-            print("Salon introuvable")
-        await asyncio.sleep(60)
+        try:
+            url = "https://www.vinted.fr/api/v2/catalog/items"
+            params = {
+                "search_text": "iPhone 11 12 13 14 15",
+                "price_from": 50,
+                "price_to": 250,
+                "order": "newest_first",
+                "per_page": 5
+            }
+
+            response = requests.get(url, params=params)
+            data = response.json()
+            items = data.get("items", [])
+
+            for item in items:
+                item_id = item["id"]
+
+                if item_id not in sent_items:
+                    sent_items.add(item_id)
+
+                    title = item["title"]
+                    price = item["price"]
+                    url_item = item["url"]
+
+                    message = f"📱 **{title}**\n💰 {price}€\n🔗 {url_item}"
+                    await channel.send(message)
+
+        except Exception as e:
+            print("Erreur Vinted:", e)
+
+        await asyncio.sleep(20)
 
 @bot.event
 async def on_ready():
     print(f"Bot connecté en tant que {bot.user}")
-    bot.loop.create_task(auto_message())
+    bot.loop.create_task(auto_vinted())
 
 app = Flask(__name__)
 
