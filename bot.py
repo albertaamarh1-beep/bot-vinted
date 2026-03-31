@@ -14,14 +14,14 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 
 async def auto_message():
     await bot.wait_until_ready()
-    channel = discord.utils.get(bot.get_all_channels(), name="annonce-Vinted")
+    channel = bot.get_channel(1488540243266375877)
 
-    while not bot.is_closed():
+    while True:
         print("La boucle tourne")
         if channel:
             await channel.send("🚀 Test automatique actif")
         else:
-            print("Salon non trouvé")
+            print("Salon introuvable")
         await asyncio.sleep(60)
 
 @bot.event
