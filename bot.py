@@ -77,3 +77,33 @@ async def check_vinted():
         await asyncio.sleep(60)  # vérifie toutes les 60 secondes
 
 bot.loop.create_task(check_vinted())
+import discord
+from discord.ext import commands
+import os
+import asyncio
+
+TOKEN = os.getenv("TOKEN")
+
+intents = discord.Intents.default()
+intents.message_content = True
+
+bot = commands.Bot(command_prefix="!", intents=intents)
+
+@bot.event
+async def on_ready():
+    print(f"Bot connecté en tant que {bot.user}")
+    bot.loop.create_task(auto_message())
+
+async def auto_message():
+    await bot.wait_until_ready()
+    channel = discord.utils.get(bot.get_all_channels(), name="annonce-Vinted")
+
+    while not bot.is_closed():
+        print("La boucle tourne")
+        if channel:
+            await channel.send("Recherche automatique iPhone 11 à 15 entre 50€ et 250€ 🔥")
+        else:
+            print("Salon non trouvé")
+        await asyncio.sleep(60)
+
+bot.run(TOKEN)
