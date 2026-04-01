@@ -22,16 +22,16 @@ def keep_alive():
     thread.start()
 
 async def vinted_loop():
-    print("Boucle démarrée")
+    print(">>> BOUCLE DÉMARRÉE <<<")
     await bot.wait_until_ready()
 
     while True:
-        print("Recherche Vinted...")
+        print(">>> RECHERCHE VINTED <<<")
         try:
             url = "https://www.vinted.fr/api/v2/catalog/items?search_text=nike"
             headers = {"User-Agent": "Mozilla/5.0"}
             response = requests.get(url, headers=headers)
-            print("HTTP", response.status_code)
+            print("HTTP STATUS:", response.status_code)
 
             if response.status_code == 200:
                 data = response.json()
@@ -44,22 +44,24 @@ async def vinted_loop():
 
                     channel = bot.get_channel(CHANNEL_ID)
                     if channel:
-                        await channel.send(f"🔥 {title}\n💰 {price}€\n🔗 {link}")
+                        await channel.send(
+                            f"🔥 {title}\n💰 {price}€\n🔗 {link}"
+                        )
 
         except Exception as e:
-            print("ERREUR :", e)
+            print("ERREUR:", e)
 
         await asyncio.sleep(20)
 
 class MyBot(discord.Client):
     async def setup_hook(self):
-        print("Setup hook lancé")
+        print(">>> SETUP_HOOK LANCÉ <<<")
         asyncio.create_task(vinted_loop())
 
 intents = discord.Intents.default()
 bot = MyBot(intents=intents)
 
-print("Script démarré")
+print(">>> SCRIPT DÉMARRÉ <<<")
 
 keep_alive()
 bot.run(TOKEN)
