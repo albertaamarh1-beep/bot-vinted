@@ -18,8 +18,10 @@ def run_web():
     app.run(host="0.0.0.0", port=10000)
 
 def keep_alive():
-    thread = Thread(target=run_web)
-    thread.start()
+    Thread(target=run_web).start()
+
+intents = discord.Intents.default()
+bot = discord.Client(intents=intents)
 
 async def vinted_loop():
     print(">>> BOUCLE DÉMARRÉE <<<")
@@ -32,34 +34,15 @@ async def vinted_loop():
             headers = {"User-Agent": "Mozilla/5.0"}
             response = requests.get(url, headers=headers)
             print("HTTP STATUS:", response.status_code)
-
-            if response.status_code == 200:
-                data = response.json()
-                items = data.get("items", [])
-                if items:
-                    item = items[0]
-                    title = item["title"]
-                    price = item["price"]["amount"]
-                    link = item["url"]
-
-                    channel = bot.get_channel(CHANNEL_ID)
-                    if channel:
-                        await channel.send(
-                            f"🔥 {title}\n💰 {price}€\n🔗 {link}"
-                        )
-
         except Exception as e:
             print("ERREUR:", e)
 
         await asyncio.sleep(20)
 
-class MyBot(discord.Client):
-    async def setup_hook(self):
-        print(">>> SETUP_HOOK LANCÉ <<<")
-        asyncio.create_task(vinted_loop())
-
-intents = discord.Intents.default()
-bot = MyBot(intents=intents)
+@bot.event
+async def on_ready():
+    print(">>> BOT CONNECTÉ <<<")
+    bot.loop.create_task(vinted_loop())
 
 print(">>> SCRIPT DÉMARRÉ <<<")
 
