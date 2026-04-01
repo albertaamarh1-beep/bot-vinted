@@ -12,23 +12,22 @@ bot = discord.Client(intents=intents)
 
 sent_links = set()
 
-MODELS = [
+VALID_MODELS = [
     "iphone 11",
     "iphone 12",
     "iphone 13",
     "iphone 14",
     "iphone 15",
-    "iphone 16"
+    "iphone 16",
+    "iphone 17"
 ]
-
-VARIANTS = ["pro", "pro max", "mini", "plus"]
 
 async def vinted_loop():
     await bot.wait_until_ready()
     print("BOUCLE LANCÉE")
 
     headers = {
-        "User-Agent": "Mozilla/5.0"
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
     }
 
     while not bot.is_closed():
@@ -41,38 +40,60 @@ async def vinted_loop():
                 soup = BeautifulSoup(r.text, "html.parser")
                 items = soup.select("div.feed-grid__item")
 
-                for item in items[:15]:
-                    link_tag = item.find("a")
+                for item in items[:40]:
+                    link_tag = item.find("a", href=True)
                     price_tag = item.find("p", {"data-testid": "price"})
                     img_tag = item.find("img")
 
                     if not link_tag or not price_tag or not img_tag:
                         continue
 
-                    link = "https://www.vinted.fr" + link_tag["href"]
-                    title = img_tag.get("alt", "").lower()
-                    image = img_tag.get("src")
+                    # ----- Lien sécurisé -----
+                    href = link_tag["href"]
+                    if href.startswith("http"):
+                        link = href
+                    else:
+                        link = "https://www.vinted.fr" + href
 
-                    price_text = price_tag.text.strip().replace("€", "").replace(",", ".")
+                    if link in sent_links:
+                        continue
+
+                    # ----- Titre -----
+                    title = img_tag.get("alt", "").lower()
+
+                    if not any(model in title for model in VALID_MODELS):
+                        continue
+
+                    # ----- Image fix -----
+                    image = (
+                        img_tag.get("src")
+                        or img_tag.get("data-src")
+                        or img_tag.get("data-original")
+                    )
+
+                    if image and image.startswith("//"):
+                        image = "https:" + image
+
+                    if not image:
+                        continue
+
+                    # ----- Prix -----
+                    price_text = (
+                        price_tag.text
+                        .strip()
+                        .replace("€", "")
+                        .replace(",", ".")
+                    )
+
                     try:
                         price = float(price_text)
                     except:
                         continue
 
-                    if link in sent_links:
+                    if price < 50 or price > 200:
                         continue
 
-                    # Vérifie modèle
-                    if not any(model in title for model in MODELS):
-                        continue
-
-                    # Autorise variantes
-                    if any(v in title for v in VARIANTS) or True:
-                        pass
-
-                    if price < 50 or price > 250:
-                        continue
-
+                    # ----- Ajout anti-duplicate -----
                     sent_links.add(link)
 
                     embed = discord.Embed(
