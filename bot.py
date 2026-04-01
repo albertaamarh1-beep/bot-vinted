@@ -6,10 +6,11 @@ from flask import Flask
 from threading import Thread
 
 TOKEN = os.getenv("DISCORD_TOKEN")
+CHANNEL_ID = 1488540243266375877
 
 app = Flask(__name__)
 
-@app.route('/')
+@app.route("/")
 def home():
     return "Bot is running"
 
@@ -17,35 +18,24 @@ def run_web():
     app.run(host="0.0.0.0", port=10000)
 
 def keep_alive():
-    t = Thread(target=run_web)
-    t.start()
-
-intents = discord.Intents.default()
-bot = discord.Client(intents=intents)
-
-CHANNEL_ID = 1488540243266375877
+    thread = Thread(target=run_web)
+    thread.start()
 
 async def vinted_loop():
     print("Boucle démarrée")
-
     await bot.wait_until_ready()
 
-    while not bot.is_closed():
+    while True:
         print("Recherche Vinted...")
-
         try:
             url = "https://www.vinted.fr/api/v2/catalog/items?search_text=nike"
-            headers = {
-                "User-Agent": "Mozilla/5.0"
-            }
-
+            headers = {"User-Agent": "Mozilla/5.0"}
             response = requests.get(url, headers=headers)
             print("HTTP", response.status_code)
 
             if response.status_code == 200:
                 data = response.json()
                 items = data.get("items", [])
-
                 if items:
                     item = items[0]
                     title = item["title"]
@@ -61,10 +51,13 @@ async def vinted_loop():
 
         await asyncio.sleep(20)
 
-@bot.event
-async def on_ready():
-    print(f"Bot connecté en tant que {bot.user}")
-    asyncio.create_task(vinted_loop())
+class MyBot(discord.Client):
+    async def setup_hook(self):
+        print("Setup hook lancé")
+        asyncio.create_task(vinted_loop())
+
+intents = discord.Intents.default()
+bot = MyBot(intents=intents)
 
 print("Script démarré")
 
