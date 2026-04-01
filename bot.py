@@ -13,11 +13,20 @@ async def vinted_loop():
     await bot.wait_until_ready()
     print("BOUCLE LANCÉE")
 
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+        "Accept": "application/json, text/plain, */*",
+        "Accept-Language": "fr-FR,fr;q=0.9",
+        "Referer": "https://www.vinted.fr/",
+        "Origin": "https://www.vinted.fr",
+        "Connection": "keep-alive"
+    }
+
     while not bot.is_closed():
         try:
-            url = "https://www.vinted.fr/api/v2/catalog/items?search_text=iphone"
-            headers = {"User-Agent": "Mozilla/5.0"}
-            r = requests.get(url, headers=headers)
+            url = "https://www.vinted.fr/api/v2/catalog/items?search_text=iphone&order=newest_first"
+
+            r = requests.get(url, headers=headers, timeout=10)
 
             print("STATUS:", r.status_code)
 
@@ -27,9 +36,9 @@ async def vinted_loop():
 
                 if items:
                     item = items[0]
-                    title = item["title"]
-                    price = item["price"]["amount"]
-                    link = item["url"]
+                    title = item.get("title")
+                    price = item.get("price", {}).get("amount")
+                    link = item.get("url")
 
                     channel = bot.get_channel(CHANNEL_ID)
                     if channel:
@@ -40,7 +49,7 @@ async def vinted_loop():
         except Exception as e:
             print("ERREUR:", e)
 
-        await asyncio.sleep(20)
+        await asyncio.sleep(30)
 
 @bot.event
 async def on_ready():
