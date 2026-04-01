@@ -5,7 +5,7 @@ import os
 from flask import Flask
 from threading import Thread
 
-TOKEN = os.getenv("DISCORD_TOKEN")
+TOKEN = os.getenv("TOKEN")
 CHANNEL_ID = 1488540243266375877
 
 app = Flask(__name__)
