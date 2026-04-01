@@ -2,7 +2,6 @@ import discord
 import asyncio
 import requests
 import os
-from bs4 import BeautifulSoup
 
 TOKEN = os.getenv("TOKEN")
 CHANNEL_ID = 1488540243266375877
@@ -10,7 +9,7 @@ CHANNEL_ID = 1488540243266375877
 intents = discord.Intents.default()
 bot = discord.Client(intents=intents)
 
-sent_links = set()
+sent_ids = set()
 
 MODELS = [
     "iphone 11",
@@ -22,67 +21,46 @@ MODELS = [
     "iphone 17"
 ]
 
+headers = {
+    "User-Agent": "Mozilla/5.0",
+    "Accept": "application/json"
+}
+
 async def search_model(model):
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
-    }
+    url = (
+        "https://www.vinted.fr/api/v2/catalog/items"
+        f"?search_text={model.replace(' ', '%20')}"
+        "&price_from=50"
+        "&price_to=200"
+        "&order=newest_first"
+    )
 
-    url = f"https://www.vinted.fr/catalog?search_text={model.replace(' ', '%20')}&order=newest_first"
-    r = requests.get(url, headers=headers, timeout=10)
+    r = requests.get(url, headers=headers)
 
-    print(f"{model} STATUS:", r.status_code)
+    print(model, "STATUS:", r.status_code)
 
     if r.status_code != 200:
         return []
 
-    soup = BeautifulSoup(r.text, "html.parser")
-    items = soup.select("div.feed-grid__item")
+    data = r.json()
+    items = data.get("items", [])
 
     results = []
 
-    for item in items[:25]:
-        link_tag = item.find("a", href=True)
-        price_tag = item.find("p", {"data-testid": "price"})
-        img_tag = item.find("img")
-
-        if not link_tag or not price_tag or not img_tag:
+    for item in items:
+        item_id = item.get("id")
+        if item_id in sent_ids:
             continue
 
-        href = link_tag["href"]
-        link = href if href.startswith("http") else "https://www.vinted.fr" + href
+        title = item.get("title", "")
+        price = item.get("price", {}).get("amount")
+        link = item.get("url")
+        image = item.get("photo", {}).get("url")
 
-        if link in sent_links:
+        if not title or not price or not link or not image:
             continue
 
-        title = img_tag.get("alt", "").lower()
-
-        price_text = (
-            price_tag.text.strip()
-            .replace("€", "")
-            .replace(",", ".")
-        )
-
-        try:
-            price = float(price_text)
-        except:
-            continue
-
-        if price < 50 or price > 200:
-            continue
-
-        image = (
-            img_tag.get("src")
-            or img_tag.get("data-src")
-            or img_tag.get("data-original")
-        )
-
-        if image and image.startswith("//"):
-            image = "https:" + image
-
-        if not image:
-            continue
-
-        results.append((title, price, link, image))
+        results.append((item_id, title, price, link, image))
 
     return results
 
@@ -96,11 +74,11 @@ async def vinted_loop():
             for model in MODELS:
                 results = await search_model(model)
 
-                for title, price, link, image in results:
-                    sent_links.add(link)
+                for item_id, title, price, link, image in results:
+                    sent_ids.add(item_id)
 
                     embed = discord.Embed(
-                        title=title.title(),
+                        title=title,
                         description=f"💰 {price}€",
                         url=link,
                         color=0x2ecc71
